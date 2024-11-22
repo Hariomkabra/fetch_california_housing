@@ -5,16 +5,42 @@ from flask import Flask,request,app,jsonify,url_for,render_template
 import numpy as np
 import pandas as pd
 
+import os
+
+if not os.path.exists('regmodel.pkl') or not os.path.exists('scaling.pkl'):
+    raise FileNotFoundError("One or both required files (regmodel.pkl, scaling.pkl) are missing.")
+
 app=Flask(__name__)
 ## Load the model
 regmodel=pickle.load(open('regmodel.pkl','rb'))
 scalar=pickle.load(open('scaling.pkl','rb'))
+
 @app.route('/')
 def home():
     return render_template('home.html')
 
-@app.route('/predict_api',methods=['POST'])
+
+@app.route('/predict_api', methods=['POST'])
 def predict_api():
+    data = request.json['data']
+    print(data)
+
+    # Convert the data to a numpy array and reshape it
+    new_data = np.array(list(data.values())).reshape(1, -1)
+
+    # Scale the new data using the scalar object
+    new_data = scalar.transform(new_data)
+
+    # Make the prediction using the trained model
+    output = regmodel.predict(new_data)
+    print(output[0])
+
+    return jsonify(output[0])
+
+
+
+#@app.route('/predict_api',methods=['POST'])
+#def predict_api():
     data=request.json['data']
     print(data)
     print(np.array(list(data.values())).reshape(1,-1))
@@ -23,8 +49,8 @@ def predict_api():
     print(output[0])
     return jsonify(output[0])
 
-@app.route('/predict',methods=['POST'])
-def predict():
+#@app.route('/predict',methods=['POST'])
+#def predict():
     data=[float(x) for x in request.form.values()]
     final_input=scalar.transform(np.array(data).reshape(1,-1))
     print(final_input)
